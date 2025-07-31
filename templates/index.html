@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema RAG Multimodal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+            --primary-gradient: linear-gradient(to right, #6a11cb 0%, #2575fc 100%);
+            --secondary-gradient: linear-gradient(to right, #9e11cb 0%, #ee68fa 100%);
+            --light-purple-gradient: radial-gradient(circle at top left, #e0c3fc 0%, #f7f7f7 70%);
+            --button-border-gradient: linear-gradient(to right, #6a11cb, #2575fc);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background: var(--light-purple-gradient);
+            color: #333;
+            overflow-y: auto;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            margin: 40px 20px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header img.icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin: 0;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            color: #4CAF50;
+            margin-top: 10px;
+        }
+
+        .status .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .tab-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            position: relative;
+        }
+
+        .tab-button.active {
+            background: var(--primary-gradient);
+        }
+
+        .tab-button.inactive {
+            background-color: #f0f0f0;
+            color: #555;
+            box-shadow: none;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .tab-button.inactive::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 30px;
+            padding: 2px;
+            background: var(--button-border-gradient) border-box;
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        .tab-button i {
+            font-size: 1.2em;
+        }
+
+        .tab-content {
+            display: none;
+            text-align: left;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .content-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .content-header img.icon {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+        }
+
+        .content-header h3 {
+            font-size: 1.8em;
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .content-header p {
+            font-size: 1em;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        /* Text Search Specific Styles */
+        .search-input-group {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 30px;
+            padding: 5px 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-top: 20px;
+        }
+
+        .search-input-group input[type="text"] {
+            flex-grow: 1;
+            border: none;
+            padding: 10px 0;
+            font-size: 1.1em;
+            outline: none;
+            color: #333;
+        }
+
+        .search-input-group input[type="text"]::placeholder {
+            color: #aaa;
+        }
+
+        .search-input-group button {
+            background: var(--secondary-gradient);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: white;
+            font-size: 1.4em;
+            transition: transform 0.2s ease;
+        }
+
+        .search-input-group button:hover {
+            transform: scale(1.05);
+        }
+
+        .search-input-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Image Upload Specific Styles */
+        .drop-area {
+            border: 2px dashed #a0a0a0;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .drop-area:hover {
+            background-color: #f9f9f9;
+            border-color: #6a11cb;
+        }
+
+        .drop-area.highlight {
+            background-color: #e0c3fc;
+            border-color: #6a11cb;
+        }
+
+        .drop-area .upload-icon {
+            font-size: 3em;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .drop-area p {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .drop-area small {
+            color: #888;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+
+        .upload-button {
+            background: var(--secondary-gradient);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .upload-button:hover {
+            transform: scale(1.05);
+        }
+
+        .upload-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Results and Generated Response Styles */
+        #results-area, #generated-response {
+            margin-top: 30px;
+            text-align: left;
+            display: none;
+        }
+
+        #results-area.show, #generated-response.show {
+            display: block;
+        }
+
+        #results-area h2, #generated-response h2 {
+            text-align: center;
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .retrieved-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .retrieved-image {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .retrieved-item-content {
+            flex-grow: 1;
+        }
+
+        .retrieved-item-content p {
+            margin: 0 0 5px 0;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        .retrieved-item-content .distance {
+            font-size: 0.8em;
+            color: #888;
+            font-style: italic;
+        }
+
+        #generated-response-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #444;
+            background-color: #fdfdfd;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ffcdd2;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .file-preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .file-preview p {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrE47WxS03JIhTQnufgAqWa0XgOxIujdygtw&s" alt="Gemini Icon" class="icon">
+            <h1>Sistema RAG Multimodal</h1>
+            <p>Búsqueda y descripción inteligente de imágenes impulsada por IA avanzada</p>
+            <div class="status">
+                <span class="dot"></span> IA Activa
+            </div>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="text-tab">
+                <i class="ri-text"></i> Buscar por texto
+            </button>
+            <button class="tab-button inactive" data-tab="image-tab">
+                <i class="ri-image-line"></i> Buscar por imagen
+            </button>
+        </div>
+
+        <div id="text-tab" class="tab-content active">
+            <div class="content-header">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrE47WxS03JIhTQnufgAqWa0XgOxIujdygtw&s" alt="Gemini Icon" class="icon">
+                <h3>Búsqueda Semántica Inteligente</h3>
+                <p>Describe lo que buscas y nuestra IA encontrará imágenes<br>conceptualmente relacionadas</p>
+            </div>
+            <div class="search-input-group">
+                <input type="text" id="query_text" placeholder="Ej: bosque verde exuberante, atardecer montañoso, paisaje natural...">
+                <button type="button" id="text-search-btn"><i class="ri-search-line"></i></button>
+            </div>
+        </div>
+
+        <div id="image-tab" class="tab-content">
+            <div class="content-header">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrE47WxS03JIhTQnufgAqWa0XgOxIujdygtw&s" alt="Gemini Icon" class="icon">
+                <h3>Análisis Visual con IA</h3>
+                <p>Sube una imagen y encontraremos contenido visualmente similar con<br>descripciones detalladas</p>
+            </div>
+            <div class="drop-area" id="drop-area">
+                <input type="file" id="query_image" class="hidden-file-input" accept="image/jpeg,image/png,image/webp,image/gif">
+                <i class="ri-upload-cloud-2-line upload-icon"></i>
+                <p>Arrastra y suelta tu imagen aquí</p>
+                <p>O haz clic para seleccionar desde tu dispositivo</p>
+                <small>Formatos soportados: JPG, PNG, WebP, GIF</small>
+                <button type="button" class="upload-button" id="select-image-button">Seleccionar imagen</button>
+            </div>
+            <div id="file-preview" class="file-preview"></div>
+            <button type="button" id="image-search-btn" class="upload-button" style="display: none; margin-top: 20px;">
+                <i class="ri-search-line"></i> Buscar por imagen
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i>
+            Procesando tu consulta...
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <div id="results-area">
+            <h2>Resultados Recuperados</h2>
+            <div id="retrieved-items"></div>
+        </div>
+
+        <div id="generated-response">
+            <h2>Respuesta Generada</h2>
+            <div id="generated-response-content"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const textSearchBtn = document.getElementById('text-search-btn');
+            const imageSearchBtn = document.getElementById('image-search-btn');
+            const queryTextInput = document.getElementById('query_text');
+            const queryImageInput = document.getElementById('query_image');
+            const dropArea = document.getElementById('drop-area');
+            const selectImageButton = document.getElementById('select-image-button');
+            const filePreview = document.getElementById('file-preview');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const resultsArea = document.getElementById('results-area');
+            const generatedResponse = document.getElementById('generated-response');
+            const retrievedItems = document.getElementById('retrieved-items');
+            const generatedResponseContent = document.getElementById('generated-response-content');
+
+            let currentTab = 'text';
+
+            // Function to activate a specific tab
+            function activateTab(tabId) {
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                tabButtons.forEach(button => {
+                    button.classList.remove('active');
+                    button.classList.add('inactive');
+                });
+
+                document.getElementById(tabId).classList.add('active');
+                document.querySelector(`[data-tab="${tabId}"]`).classList.remove('inactive');
+                document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+                
+                currentTab = tabId === 'text-tab' ? 'text' : 'image';
+
+                // Clear inputs and results when switching tabs
+                if (tabId === 'text-tab') {
+                    queryImageInput.value = '';
+                    filePreview.innerHTML = '';
+                    imageSearchBtn.style.display = 'none';
+                } else {
+                    queryTextInput.value = '';
+                }
+
+                hideResults();
+            }
+
+            // Event listeners for tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    activateTab(this.dataset.tab);
+                });
+            });
+
+            // Text search functionality
+            textSearchBtn.addEventListener('click', performTextSearch);
+            queryTextInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performTextSearch();
+                }
+            });
+
+            function performTextSearch() {
+                const query = queryTextInput.value.trim();
+                if (!query) {
+                    showError('Por favor, ingresa una consulta de texto.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('query_type', 'text');
+                formData.append('query_text', query);
+                
+                performSearch(formData);
+            }
+
+            // Image search functionality
+            imageSearchBtn.addEventListener('click', performImageSearch);
+
+            function performImageSearch() {
+                const file = queryImageInput.files[0];
+                if (!file) {
+                    showError('Por favor, selecciona una imagen.');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('query_type', 'image');
+                formData.append('query_image', file);
+                
+                performSearch(formData);
+            }
+
+            // Image upload handling
+            dropArea.addEventListener('click', () => queryImageInput.click());
+            selectImageButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                queryImageInput.click();
+            });
+
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // Highlight drop area when dragging over
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight'), false);
+            });
+
+            // Handle dropped files
+            dropArea.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    queryImageInput.files = files;
+                    handleFileSelect(files[0]);
+                }
+            }
+
+            // Handle file selection
+            queryImageInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            function handleFileSelect(file) {
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        filePreview.innerHTML = `
+                            <img src="${e.target.result}" alt="Vista previa">
+                            <p>Archivo seleccionado: ${file.name}</p>
+                        `;
+                        imageSearchBtn.style.display = 'inline-block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showError('Por favor, selecciona un archivo de imagen válido.');
+                    queryImageInput.value = '';
+                    filePreview.innerHTML = '';
+                    imageSearchBtn.style.display = 'none';
+                }
+            }
+
+            // Main search function
+            function performSearch(formData) {
+                showLoading();
+                hideError();
+                hideResults();
+
+                fetch('/search', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+
+                    displayResults(data.results, data.generated_response);
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error:', error);
+                    showError('Error al procesar la consulta. Por favor, intenta de nuevo.');
+                });
+            }
+
+            // Display results
+            function displayResults(results, response) {
+                // Display retrieved items
+                retrievedItems.innerHTML = '';
+                
+                if (results && results.length > 0) {
+                    results.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'retrieved-item';
+                        
+                        itemDiv.innerHTML = `
+                            ${item.image_b64 ? `<img src="data:image/jpeg;base64,${item.image_b64}" alt="Imagen Recuperada" class="retrieved-image">` : ''}
+                            <div class="retrieved-item-content">
+                                <p>${item.description}</p>
+                                <div class="distance">Similitud: ${item.distance}</div>
+                            </div>
+                        `;
+                        
+                        retrievedItems.appendChild(itemDiv);
+                    });
+                } else {
+                    retrievedItems.innerHTML = '<p>No se encontraron resultados relevantes.</p>';
+                }
+
+                // Display generated response
+                generatedResponseContent.textContent = response || 'No se pudo generar una respuesta.';
+
+                // Show results sections
+                resultsArea.classList.add('show');
+                generatedResponse.classList.add('show');
+            }
+
+            // Utility functions
+            function showLoading() {
+                loading.classList.add('show');
+                textSearchBtn.disabled = true;
+                imageSearchBtn.disabled = true;
+                selectImageButton.disabled = true;
+            }
+
+            function hideLoading() {
+                loading.classList.remove('show');
+                textSearchBtn.disabled = false;
+                imageSearchBtn.disabled = false;
+                selectImageButton.disabled = false;
+            }
+
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.classList.add('show');
+            }
+
+            function hideError() {
+                errorMessage.classList.remove('show');
+            }
+
+            function hideResults() {
+                resultsArea.classList.remove('show');
+                generatedResponse.classList.remove('show');
+            }
+
+            // Set initial active tab
+            activateTab('text-tab');
+        });
+
+        // Add CSS animation for loading spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
